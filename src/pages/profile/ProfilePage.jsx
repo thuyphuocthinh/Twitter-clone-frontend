@@ -13,6 +13,9 @@ import { FaLink } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
 import { useQuery } from "@tanstack/react-query";
 import { formatMemberSinceDate } from "../../utils/date/function";
+import useFollow from "../../hooks/useFollow";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import useUpdateUserProfile from "../../hooks/useUpdateUserProfile";
 
 const ProfilePage = () => {
   const [coverImg, setCoverImg] = useState(null);
@@ -20,9 +23,8 @@ const ProfilePage = () => {
   const [feedType, setFeedType] = useState("posts");
   const coverImgRef = useRef(null);
   const profileImgRef = useRef(null);
-  const isMyProfile = true;
   const { username } = useParams();
-
+  const { follow, isPending } = useFollow();
   const {
     data: user,
     isLoading,
@@ -56,6 +58,11 @@ const ProfilePage = () => {
     }
   };
 
+  const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+  const isMyProfile = authUser?._id === user?._id;
+  const amIFollowing = authUser?.following.includes(user?._id);
+  const { updateProfile, isUpdatingProfile } = useUpdateUserProfile();
+
   useEffect(() => {
     refetch();
   }, [username, refetch]);
@@ -85,7 +92,7 @@ const ProfilePage = () => {
               {/* COVER IMG */}
               <div className="relative group/cover">
                 <img
-                  src={coverImg || user?.coverImg || "/cover.png"}
+                  src={coverImg || user?.coverImage || "/cover.png"}
                   className="h-52 w-full object-cover"
                   alt="cover image"
                 />
@@ -118,7 +125,7 @@ const ProfilePage = () => {
                     <img
                       src={
                         profileImg ||
-                        user?.profileImg ||
+                        user?.profileImage ||
                         "/avatar-placeholder.png"
                       }
                       className="object-cover"
@@ -135,21 +142,30 @@ const ProfilePage = () => {
                 </div>
               </div>
               <div className="flex justify-end px-4 mt-5">
-                {isMyProfile && <EditProfileModal />}
+                {isMyProfile && <EditProfileModal authUser={authUser} />}
                 {!isMyProfile && (
                   <button
                     className="btn btn-outline rounded-full btn-sm"
-                    onClick={() => alert("Followed successfully")}
+                    onClick={() => follow(user?._id)}
                   >
-                    Follow
+                    {isPending && <LoadingSpinner size="sm" />}
+                    {!isPending && amIFollowing && "Unfollow"}
+                    {!isPending && !amIFollowing && "Follow"}
                   </button>
                 )}
                 {(coverImg || profileImg) && (
                   <button
                     className="btn btn-primary rounded-full btn-sm text-white px-4 ml-2"
-                    onClick={() => alert("Profile updated successfully")}
+                    onClick={async () => {
+                      await updateProfile({
+                        profileImage: profileImg,
+                        coverImage: coverImg,
+                      });
+                      setCoverImg("");
+                      setProfileImg("");
+                    }}
                   >
-                    Update
+                    {isUpdatingProfile ? "Updating..." : "Update"}
                   </button>
                 )}
               </div>
@@ -169,12 +185,12 @@ const ProfilePage = () => {
                       <>
                         <FaLink className="w-3 h-3 text-slate-500" />
                         <a
-                          href="https://youtube.com/@asaprogrammer_"
+                          href={user?.link}
                           target="_blank"
                           rel="noreferrer"
                           className="text-sm text-blue-500 hover:underline"
                         >
-                          youtube.com/@asaprogrammer_
+                          {user?.link}
                         </a>
                       </>
                     </div>
@@ -224,7 +240,7 @@ const ProfilePage = () => {
             </>
           )}
 
-          <Posts feedType={feedType} username={username} userId={user._id} />
+          <Posts feedType={feedType} username={username} userId={user?._id} />
         </div>
       </div>
     </>
