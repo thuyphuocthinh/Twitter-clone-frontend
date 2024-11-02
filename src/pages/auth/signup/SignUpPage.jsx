@@ -40,15 +40,14 @@ export default function SignUpPage() {
 
         // if (!res.ok) throw new Error("Something went wrong");
         const data = await res.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        toast.success("Signup successfully");
+        if (!res.ok) throw new Error(data.error || "Failed to create account");
+        toast.success("Account created successfully");
         resetFormData();
         return data;
       } catch (error) {
         console.error(error);
         toast.error(error.message);
+        // throw error;
       }
     },
     onError: () => {
